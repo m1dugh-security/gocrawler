@@ -4,29 +4,10 @@ import (
     "net/http"
     "regexp"
     "io/ioutil"
-    "fmt"
 )
 
 var rootUrlRegex = regexp.MustCompile(`https?://([\w\-]+\.)[a-z]{2,7}`)
 
-func ExtractPageInfo(url string) ([]string, []string) {
-    rootUrl := rootUrlRegex.FindString(url)
-    resp, err := http.Get(url)
-    if err != nil {
-        return nil, nil
-    }
-
-    defer resp.Body.Close()
-
-    body, err := ioutil.ReadAll(resp.Body)
-    if err != nil {
-        return nil, nil
-    }
-
-    var content string = string(body)
-    
-    return ExtractUrls(content, rootUrl), ExtractEmails(content)
-}
 
 type Scope []*regexp.Regexp
 
@@ -63,12 +44,44 @@ type Crawler struct {
     Scope *Scope
     urls *Queue
     Discovered *StringSet
+    callbacks []func(*http.Response, string)
 }
 
 func NewCrawler(scope *Scope) *Crawler {
-    res := &Crawler{scope, CreateQueue(), NewStringSet(nil)}
+    res := &Crawler{scope, CreateQueue(), NewStringSet(nil), nil}
 
     return res
+}
+
+func (cr *Crawler) runCallbacks(resp *http.Response, body string) {
+    for _, f := range cr.callbacks {
+        f(resp, body)
+    }
+}
+
+func (cr *Crawler) ExtractPageInfo(url string) ([]string, []string) {
+    rootUrl := rootUrlRegex.FindString(url)
+    resp, err := http.Get(url)
+    if err != nil {
+        return nil, nil
+    }
+
+
+    body, err := ioutil.ReadAll(resp.Body)
+    if err != nil {
+        resp.Body.Close()
+        return nil, nil
+    }
+
+    var content string = string(body)
+    resp.Body.Close()
+    cr.runCallbacks(resp, content)
+    
+    return ExtractUrls(content, rootUrl), ExtractEmails(content)
+}
+
+func (cr *Crawler) AddCallback(f func(*http.Response, string)) {
+    cr.callbacks = append(cr.callbacks, f)
 }
 
 func (cr *Crawler) Crawl(endpoints []string) {
@@ -88,8 +101,7 @@ func (cr *Crawler) Crawl(endpoints []string) {
         }
 
         if cr.Discovered.AddWord(url) {
-            fmt.Println(url)
-            urls, _ := ExtractPageInfo(url)
+            urls, _ := cr.ExtractPageInfo(url)
             for _, u := range urls {
                 cr.urls.Enqueue(u)
             }
