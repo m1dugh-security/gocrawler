@@ -4,6 +4,7 @@ import (
     "net/http"
     "regexp"
     "io/ioutil"
+    "sync"
 )
 
 var rootUrlRegex = regexp.MustCompile(`https?://([\w\-]+\.)[a-z]{2,7}`)
@@ -84,27 +85,59 @@ func (cr *Crawler) AddCallback(f func(*http.Response, string)) {
     cr.callbacks = append(cr.callbacks, f)
 }
 
+const maxWorkers = 10
+
 func (cr *Crawler) Crawl(endpoints []string) {
     for _, v := range endpoints {
         cr.urls.Enqueue(v)
     }
-    
-    for cr.urls.Length > 0 {
-        elem, err := cr.urls.Dequeue()
-        if err != nil {
-            break
-        }
 
-        url := elem.(string)
+
+    crawlPage := func(count *int, mut *sync.Mutex, cr *Crawler, url string) {
+
         if !cr.Scope.InScope(url) {
-            continue
+            mut.Lock()
+            *count = *count - 1
+            mut.Unlock()
+            return
         }
 
-        if cr.Discovered.AddWord(url) {
+        mut.Lock()
+        added := cr.Discovered.AddWord(url)
+        mut.Unlock()
+
+        if added {
             urls, _ := cr.ExtractPageInfo(url)
+            mut.Lock()
             for _, u := range urls {
                 cr.urls.Enqueue(u)
             }
+            mut.Unlock()
+        }
+
+        mut.Lock()
+        *count = *count - 1
+        mut.Unlock()
+
+    }
+
+    var workerCount int = 0
+    var mut sync.Mutex
+
+    for cr.urls.Length > 0 || workerCount > 0{
+        for workerCount < maxWorkers {
+            mut.Lock()
+            elem, err := cr.urls.Dequeue()
+            mut.Unlock()
+            if err != nil {
+                break
+            }
+
+            url := elem.(string)
+            mut.Lock()
+            workerCount++
+            mut.Unlock()
+            go crawlPage(&workerCount, &mut, cr, url)
         }
     }
 }
