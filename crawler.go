@@ -49,11 +49,13 @@ func DefaultConfig() *Config {
     return &Config{10}
 }
 
+type Callback func(*http.Response, string)
+
 type Crawler struct {
     Scope *Scope
     urls *Queue
     Discovered *StringSet
-    callbacks []func(*http.Response, string)
+    callbacks []Callback
     Config *Config
 }
 
@@ -98,13 +100,13 @@ func (cr *Crawler) ExtractPageInfo(url string) ([]string, []string) {
     return ExtractUrls(content, rootUrl), ExtractEmails(content)
 }
 
-func (cr *Crawler) AddCallback(f func(*http.Response, string)) {
+func (cr *Crawler) AddCallback(f Callback) {
     cr.callbacks = append(cr.callbacks, f)
 }
 
 const maxWorkers = 10
 
-func (cr *Crawler) crawlPage(count *int, mut *sync.Mutex, url string) {
+func (cr *Crawler) crawlPage(count *uint, mut *sync.Mutex, url string) {
 
     if !cr.Scope.InScope(url) {
         mut.Lock()
@@ -137,7 +139,7 @@ func (cr *Crawler) Crawl(endpoints []string) {
     }
 
 
-    var workerCount int = 0
+    var workerCount uint = 0
     var mut sync.Mutex
 
     for cr.urls.Length > 0 || workerCount > 0{

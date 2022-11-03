@@ -4,12 +4,13 @@ import (
     "regexp"
     "fmt"
     "strings"
+    "html"
 )
 
-var urlRegex = regexp.MustCompile(`https?://([\w\-]+\.)+[a-z]{2,7}(/[\w\.=\?\-\&\[\]]+)+`)
+var urlRegex = regexp.MustCompile(`https?://([\w\-]+\.)+[a-z]{2,7}(/[\w\.=\?\-\&\[\]\;]+)+`)
 var emailRegex = regexp.MustCompile(`[\w\-\.]+@([\w\-]+\.)+[a-z]{2,7}`)
 
-var tagExtractor = regexp.MustCompile(`(src|href)="(/[\w\.=\?\-\&\[\]]+)+"`)
+var tagExtractor = regexp.MustCompile(`(src|href)="(/[\w\.=\?\-\&\[\]\;]+)+"`)
 
 func ExtractUrls(page string, root_url string) []string {
     
@@ -30,6 +31,10 @@ func ExtractUrls(page string, root_url string) []string {
                 elements++
             }
         }
+    }
+
+    for i := 0; i < elements; i++ {
+        res[i] = html.UnescapeString(res[i])
     }
 
     return res[:elements]

@@ -7,9 +7,9 @@ import (
 
 func main() {
 
-    scope := NewScope([]string{`([\w\-]\.)+com`})
+    scope := NewScope([]string{`([\w\-]\.)+google\.com`})
 
-    crawler := NewCrawler(scope)
+    crawler := NewCrawler(scope, nil)
 
     crawler.AddCallback(func(res *http.Response, _ string) {
         fmt.Println(res.Request.URL)
