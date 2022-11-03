@@ -41,15 +41,32 @@ func (s *Scope) InScope(url string) bool {
     return false
 }
 
+type Config struct {
+    MaxThreads uint
+}
+
+func DefaultConfig() *Config {
+    return &Config{10}
+}
+
 type Crawler struct {
     Scope *Scope
     urls *Queue
     Discovered *StringSet
     callbacks []func(*http.Response, string)
+    Config *Config
 }
 
-func NewCrawler(scope *Scope) *Crawler {
-    res := &Crawler{scope, CreateQueue(), NewStringSet(nil), nil}
+func NewCrawler(scope *Scope, config *Config) *Crawler {
+    if config == nil {
+        config = DefaultConfig()
+    }
+
+    res := &Crawler{scope,
+    CreateQueue(),
+    NewStringSet(nil),
+    nil,
+    config}
 
     return res
 }
@@ -77,7 +94,7 @@ func (cr *Crawler) ExtractPageInfo(url string) ([]string, []string) {
     var content string = string(body)
     resp.Body.Close()
     cr.runCallbacks(resp, content)
-    
+
     return ExtractUrls(content, rootUrl), ExtractEmails(content)
 }
 
@@ -87,45 +104,44 @@ func (cr *Crawler) AddCallback(f func(*http.Response, string)) {
 
 const maxWorkers = 10
 
+func (cr *Crawler) crawlPage(count *int, mut *sync.Mutex, url string) {
+
+    if !cr.Scope.InScope(url) {
+        mut.Lock()
+        *count = *count - 1
+        mut.Unlock()
+        return
+    }
+
+    mut.Lock()
+    added := cr.Discovered.AddWord(url)
+    mut.Unlock()
+
+    if added {
+        urls, _ := cr.ExtractPageInfo(url)
+        mut.Lock()
+        for _, u := range urls {
+            cr.urls.Enqueue(u)
+        }
+        mut.Unlock()
+    }
+
+    mut.Lock()
+    *count = *count - 1
+    mut.Unlock()
+}
+
 func (cr *Crawler) Crawl(endpoints []string) {
     for _, v := range endpoints {
         cr.urls.Enqueue(v)
     }
 
 
-    crawlPage := func(count *int, mut *sync.Mutex, cr *Crawler, url string) {
-
-        if !cr.Scope.InScope(url) {
-            mut.Lock()
-            *count = *count - 1
-            mut.Unlock()
-            return
-        }
-
-        mut.Lock()
-        added := cr.Discovered.AddWord(url)
-        mut.Unlock()
-
-        if added {
-            urls, _ := cr.ExtractPageInfo(url)
-            mut.Lock()
-            for _, u := range urls {
-                cr.urls.Enqueue(u)
-            }
-            mut.Unlock()
-        }
-
-        mut.Lock()
-        *count = *count - 1
-        mut.Unlock()
-
-    }
-
     var workerCount int = 0
     var mut sync.Mutex
 
     for cr.urls.Length > 0 || workerCount > 0{
-        for workerCount < maxWorkers {
+        for workerCount < cr.Config.MaxThreads {
             mut.Lock()
             elem, err := cr.urls.Dequeue()
             mut.Unlock()
@@ -137,7 +153,7 @@ func (cr *Crawler) Crawl(endpoints []string) {
             mut.Lock()
             workerCount++
             mut.Unlock()
-            go crawlPage(&workerCount, &mut, cr, url)
+            go cr.crawlPage(&workerCount, &mut, url)
         }
     }
 }
