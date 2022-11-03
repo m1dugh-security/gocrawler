@@ -26,19 +26,21 @@ func (parent *PrefixTree) _insertChildrenAt(index int,
 
 
 func _binSearch(children []*PrefixTree, start int, end int, x byte) int {
-    middle := start / 2 + (end - start) / 2
-    if end <= start {
-        return start
+
+    for start < end {
+        middle := start + (end - start) / 2
+
+        c := children[middle].chr
+        if c == x {
+            return middle
+        } else if x < c {
+            end = middle
+        } else {
+            start = middle + 1
+        }
     }
 
-    c := children[middle].chr
-    if c == x {
-        return middle
-    } else if x < c {
-        return _binSearch(children, start, middle, x)
-    } else {
-        return _binSearch(children, middle + 1, end, x)
-    }
+    return start
 }
 
 func (t *PrefixTree) _searchWord(str string, strlen int, index int) int {
@@ -51,7 +53,7 @@ func (t *PrefixTree) _searchWord(str string, strlen int, index int) int {
         return 0
     } else {
         pos := _binSearch(t.children, 0, children, c)
-        if pos > children {
+        if pos >= children {
             return 0
         } else if t.children[pos].chr == c {
             return t.children[pos]._searchWord(str, strlen, index + 1)
@@ -136,3 +138,94 @@ func (t *PrefixTree) AddWord(word string) bool {
         return res
     }
 }
+
+
+func _compareStrings(a string, b string) int {
+    la := len(a)
+    lb := len(b)
+    var min int
+
+    if la > lb {
+        min = lb
+    } else {
+        min = la
+    }
+    var res int = 0
+
+    for i := 0; i < min && res == 0; i++ {
+        res = int(a[i]) - int(b[i])
+    }
+
+    if res == 0 {
+        if la < lb {
+            return -1
+        } else if la == lb {
+            return 0
+        } else {
+            return 1
+        }
+    }
+
+    return res
+}
+
+
+type StringSet []string;
+
+func NewStringSet(values []string) *StringSet {
+    
+    var res *StringSet = &StringSet{}
+    *res = make([]string, len(values))
+
+    for _, v := range values {
+        res.AddWord(v)
+    }
+
+    return res
+}
+
+func (set *StringSet) _binsearch(value string) (int, bool) {
+
+    start := 0
+    end := len(*set)
+
+    for start < end {
+        middle := start + (end - start) / 2
+        s := (*set)[middle]
+        res := _compareStrings(value, s)
+        if res == 0 {
+            return middle, true
+        } else if res < 0 {
+            end = middle
+        } else {
+            start = middle + 1
+        }
+    }
+
+    return start, false
+}
+
+func (set *StringSet) _insertAt(value string, pos int) {
+    *set = append(*set, value)
+    for i := len(*set) - 1; i > pos; i-- {
+        (*set)[i] = (*set)[i - 1]
+    }
+
+    (*set)[pos] = value
+}
+
+func (set *StringSet) AddWord(value string) bool {
+    pos, found := set._binsearch(value)
+    if found {
+        return false
+    }
+
+    set._insertAt(value, pos)
+    return true
+}
+
+func (set *StringSet) ContainsWord(value string) bool {
+    _, found := set._binsearch(value)
+    return found
+}
+
