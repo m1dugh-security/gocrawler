@@ -66,6 +66,7 @@ func (q *Queue) _extend(deltasize int) {
 
     q._flatten()
     q.values = append(q.values, make([]interface{}, required)...)
+    q.enqueueIndex = q._arraylen
     q._arraylen += required
 }
 
