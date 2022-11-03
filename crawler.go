@@ -4,6 +4,7 @@ import (
     "net/http"
     "regexp"
     "io/ioutil"
+    "fmt"
 )
 
 var rootUrlRegex = regexp.MustCompile(`https?://([\w\-]+\.)[a-z]{2,7}`)
@@ -56,5 +57,43 @@ func (s *Scope) InScope(url string) bool {
     }
 
     return false
+}
+
+type Crawler struct {
+    Scope *Scope
+    urls *Queue
+    Discovered *StringSet
+}
+
+func NewCrawler(scope *Scope) *Crawler {
+    res := &Crawler{scope, CreateQueue(), NewStringSet(nil)}
+
+    return res
+}
+
+func (cr *Crawler) Crawl(endpoints []string) {
+    for _, v := range endpoints {
+        cr.urls.Enqueue(v)
+    }
+    
+    for cr.urls.Length > 0 {
+        elem, err := cr.urls.Dequeue()
+        if err != nil {
+            break
+        }
+
+        url := elem.(string)
+        if !cr.Scope.InScope(url) {
+            continue
+        }
+
+        if cr.Discovered.AddWord(url) {
+            fmt.Println(url)
+            urls, _ := ExtractPageInfo(url)
+            for _, u := range urls {
+                cr.urls.Enqueue(u)
+            }
+        }
+    }
 }
 
