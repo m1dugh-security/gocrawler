@@ -1,10 +1,16 @@
 package main
 
 import (
-    "bufio"
+    "io/ioutil"
     "os"
     "log"
+    "encoding/json"
 )
+
+type ScopeRepr struct {
+    In []string `json:"include"`
+    Ex []string `json:"exclude"`
+}
 
 func DeserializeScope(file string) *Scope {
     f, err := os.Open(file)
@@ -15,16 +21,17 @@ func DeserializeScope(file string) *Scope {
 
     defer f.Close()
 
-    scanner := bufio.NewScanner(f)
-    var res []string = nil
+    bytes, err := ioutil.ReadAll(f)
 
-    for scanner.Scan() {
-        res = append(res, scanner.Text())
+
+    if err != nil {
+        log.Fatal(err)
     }
 
-    if err := scanner.Err(); err != nil {
-        log.Fatal("Could not properly read scope file.")
+    var s ScopeRepr
+    err = json.Unmarshal(bytes, &s)
+    if err != nil {
+        log.Fatal(err)
     }
-
-    return NewScope(res)
+    return NewScope(s.In, s.Ex)
 }
