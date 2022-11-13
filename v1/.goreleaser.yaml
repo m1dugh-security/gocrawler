@@ -1,5 +1,6 @@
 # This is an example .goreleaser.yml file with some sensible defaults.
 # Make sure to check the documentation at https://goreleaser.com
+project_name: crawler
 before:
   hooks:
     # You may remove this if you don't use go modules.
@@ -11,6 +12,8 @@ builds:
       - linux
       - windows
       - darwin
+    main: ./cmd/crawler
+    binary: crawler
 archives:
   - replacements:
       darwin: Darwin
