@@ -229,3 +229,9 @@ func (set *StringSet) ContainsWord(value string) bool {
     return found
 }
 
+func (set *StringSet) ToArray() []string {
+    dest := make([]string, len(*set))
+    copy(dest, *set)
+    return dest
+}
+
