@@ -1,9 +1,10 @@
 FROM golang:1.19.3-alpine3.15 as builder
 
 WORKDIR /app
-COPY . /app
+COPY ./v1 /app
 
-RUN go build -o crawler .
+RUN go mod tidy && \
+    go build -o /bin/crawler /app/cmd/crawler/
 
 FROM alpine:3.15
 
@@ -15,7 +16,7 @@ RUN apk update && apk add shadow && \
     mkdir /crawler && \
     chown crawler:${GID} /crawler
 
-COPY --from=builder --chown=crawler /app/crawler /crawler/crawler
+COPY --from=builder --chown=crawler /bin/crawler /crawler/crawler
 
 USER crawler
 WORKDIR /crawler

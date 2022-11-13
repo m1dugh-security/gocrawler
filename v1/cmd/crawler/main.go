@@ -8,7 +8,7 @@ import (
     "os"
     "bufio"
     "io"
-    . "github.com/m1dugh/crawler/pkg/crawler"
+    . "github.com/m1dugh/crawler/v1/pkg/crawler"
 )
 
 func isInPipe() bool {
