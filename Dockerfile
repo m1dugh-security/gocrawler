@@ -1,7 +1,7 @@
 FROM golang:1.19.3-alpine3.15 as builder
 
 WORKDIR /app
-COPY ./v1 /app
+COPY ./ ./
 
 RUN go mod tidy && \
     go build -o /bin/crawler /app/cmd/crawler/
