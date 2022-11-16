@@ -1,10 +1,11 @@
-package crawler
+package utils
 
 import (
     "io/ioutil"
     "os"
     "log"
     "encoding/json"
+    "github.com/m1dugh/crawler/pkg/types"
 )
 
 type ScopeRepr struct {
@@ -12,7 +13,7 @@ type ScopeRepr struct {
     Ex []string `json:"exclude"`
 }
 
-func DeserializeScope(file string) *Scope {
+func DeserializeScope(file string) *types.Scope {
     f, err := os.Open(file)
 
     if err != nil {
@@ -33,5 +34,5 @@ func DeserializeScope(file string) *Scope {
     if err != nil {
         log.Fatal(err)
     }
-    return NewScope(s.In, s.Ex)
+    return types.NewScope(s.In, s.Ex)
 }

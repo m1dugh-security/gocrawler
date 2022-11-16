@@ -8,7 +8,8 @@ import (
     "os"
     "bufio"
     "io"
-    . "github.com/m1dugh/crawler/pkg/crawler"
+    "github.com/m1dugh/crawler/pkg/crawler"
+    "github.com/m1dugh/crawler/pkg/utils"
 )
 
 func isInPipe() bool {
@@ -51,15 +52,15 @@ func main() {
         log.Fatal("missing required argument -scope")
     }
 
-    scope := DeserializeScope(scopeFile)
+    scope := utils.DeserializeScope(scopeFile)
 
-    crawler := NewCrawler(scope, nil)
+    cr:= crawler.New(scope, nil)
 
-    crawler.Config.MaxThreads = threadCount
+    cr.Config.MaxThreads = threadCount
 
-    crawler.AddCallback(func(res *http.Response, _ string) {
+    cr.AddCallback(func(res *http.Response, _ string) {
         fmt.Println(res.Request.URL)
     })
 
-    crawler.Crawl(urls)
+    cr.Crawl(urls)
 }
