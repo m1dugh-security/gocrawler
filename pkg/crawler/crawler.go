@@ -34,7 +34,7 @@ func (s *Scope) AddRule(v string, in bool) {
     
     re, err := regexp.Compile(v)
     if err != nil {
-        // log.Warn(fmt.Sprintf(`could not compile "%s"`), v)
+        return
     }
     if in {
         s.Include = append(s.Include, re)
