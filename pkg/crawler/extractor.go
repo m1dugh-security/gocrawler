@@ -7,10 +7,15 @@ import (
     "html"
 )
 
-var urlRegex = regexp.MustCompile(`https?://([\w\-]+\.)+[a-z]{2,7}(/[\w\.=\?\-\&\[\]\;]+)+`)
+var (
+    param string = `(\?[\-\w=\.~\;\[\]&]+)?`
+    localUrl = `(/[\w\.~=\-]+)+/?`
+)
+
+var urlRegex = regexp.MustCompile(`https?://([\w\-]+\.)+[a-z]{2,7}` + localUrl + param)
 var emailRegex = regexp.MustCompile(`[\w\-\.]+@([\w\-]+\.)+[a-z]{2,7}`)
 
-var tagExtractor = regexp.MustCompile(`(src|href)="(/[\w\.=\?\-\&\[\]\;]+)+"`)
+var tagExtractor = regexp.MustCompile(`(src|href)="`+ localUrl + param + `"`)
 
 func ExtractUrls(page string, root_url string) []string {
     
