@@ -4,7 +4,7 @@ WORKDIR /app
 COPY ./ ./
 
 RUN go mod tidy && \
-    go build -o /bin/crawler /app/cmd/crawler/
+    go build -o /bin/gocrawler /app/cmd/gocrawler/
 
 FROM alpine:3.15
 
@@ -12,13 +12,13 @@ ARG UID=1000
 ARG GID=1000
 
 RUN apk update && apk add shadow && \
-    useradd --create-home --shell /sbin/nologin -u ${UID} crawler && \
-    mkdir /crawler && \
-    chown crawler:${GID} /crawler
+    useradd --create-home --shell /sbin/nologin -u ${UID} gocrawler && \
+    mkdir /gocrawler && \
+    chown gocrawler:${GID} /gocrawler
 
-COPY --from=builder --chown=crawler /bin/crawler /crawler/crawler
+COPY --from=builder --chown=gocrawler /bin/gocrawler /gocrawler/gocrawler
 
-USER crawler
-WORKDIR /crawler
+USER gocrawler
+WORKDIR /gocrawler
 
-ENTRYPOINT ["/crawler/crawler"]
+ENTRYPOINT ["/gocrawler/gocrawler"]

@@ -5,7 +5,7 @@ import (
     "os"
     "log"
     "encoding/json"
-    "github.com/m1dugh/crawler/pkg/types"
+    "github.com/m1dugh/gocrawler/pkg/types"
 )
 
 type ScopeRepr struct {

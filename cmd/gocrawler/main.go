@@ -8,8 +8,8 @@ import (
     "os"
     "bufio"
     "io"
-    "github.com/m1dugh/crawler/pkg/crawler"
-    "github.com/m1dugh/crawler/pkg/utils"
+    "github.com/m1dugh/gocrawler/pkg/gocrawler"
+    "github.com/m1dugh/gocrawler/pkg/utils"
 )
 
 func isInPipe() bool {
@@ -54,7 +54,7 @@ func main() {
 
     scope := utils.DeserializeScope(scopeFile)
 
-    cr:= crawler.New(scope, nil)
+    cr:= gocrawler.New(scope, nil)
 
     cr.Config.MaxThreads = threadCount
 

@@ -1,12 +1,12 @@
-package crawler
+package gocrawler
 
 import (
     "net/http"
     "regexp"
     "io/ioutil"
     "sync"
-    "github.com/m1dugh/crawler/pkg/types"
-    "github.com/m1dugh/crawler/pkg/utils"
+    "github.com/m1dugh/gocrawler/pkg/types"
+    "github.com/m1dugh/gocrawler/pkg/utils"
 )
 
 var rootUrlRegex = regexp.MustCompile(`https?://([\w\-]+\.)[a-z]{2,7}`)
