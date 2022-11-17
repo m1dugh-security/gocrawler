@@ -1,8 +1,8 @@
 CC=go build
 LDFLAGS=
 
-TARGET=crawler
-MAIN=cmd/crawler/main.go
+TARGET=gocrawler
+MAIN=./cmd/gocrawler/
 
 .PHONY: all build
 
