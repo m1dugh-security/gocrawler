@@ -14,10 +14,14 @@ var rootUrlRegex = regexp.MustCompile(`https?://([\w\-]+\.)[a-z]{2,7}`)
 
 type Config struct {
     MaxThreads uint
+    MaxRequests int
 }
 
 func DefaultConfig() *Config {
-    return &Config{10}
+    return &Config{
+        MaxThreads: 10,
+        MaxRequests: -1,
+    }
 }
 
 type Callback func(*http.Response, string)
@@ -28,6 +32,7 @@ type Crawler struct {
     Discovered *types.StringSet
     callbacks []Callback
     Config *Config
+    throttler *types.RequestThrottler
 }
 
 func New(scope *types.Scope, config *Config) *Crawler {
@@ -35,11 +40,14 @@ func New(scope *types.Scope, config *Config) *Crawler {
         config = DefaultConfig()
     }
 
-    res := &Crawler{scope,
-    types.CreateQueue(),
-    types.NewStringSet(nil),
-    nil,
-    config}
+    res := &Crawler{
+        Scope: scope,
+        urls: types.CreateQueue(),
+        Discovered: types.NewStringSet(nil),
+        callbacks: nil,
+        Config: config,
+        throttler: types.NewRequestThrottler(config.MaxRequests),
+    }
 
     return res
 }
@@ -50,7 +58,7 @@ func (cr *Crawler) runCallbacks(resp *http.Response, body string) {
     }
 }
 
-func (cr *Crawler) ExtractPageInfo(url string) ([]string, []string) {
+func (cr *Crawler) extractPageInfo(url string) ([]string, []string) {
     rootUrl := rootUrlRegex.FindString(url)
     resp, err := http.Get(url)
     if err != nil {
@@ -91,7 +99,8 @@ func (cr *Crawler) crawlPage(count *uint, mut *sync.Mutex, url string) {
     mut.Unlock()
 
     if added {
-        urls, _ := cr.ExtractPageInfo(url)
+        cr.throttler.AskRequest()
+        urls, _ := cr.extractPageInfo(url)
         mut.Lock()
         for _, u := range urls {
             cr.urls.Enqueue(u)

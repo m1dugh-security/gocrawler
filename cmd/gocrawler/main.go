@@ -33,30 +33,39 @@ func readStdin(r io.Reader) []string {
 
 func main() {
 
-    var urls []string
-
-    if !isInPipe() {
-        log.Fatal("expected input from stdin")
-    }
-
-    urls = readStdin(os.Stdin)
-
     var scopeFile string
     flag.StringVar(&scopeFile, "scope", "", "the file containing regexes for the scope")
     var threadCount uint
     flag.UintVar(&threadCount, "threads", 10, "Number of max concurrent threads")
+    var requestThrottle int
+    flag.IntVar(&requestThrottle, "requests", -1, "Max requests per second (-1 is no throttle)")
+    var inputFile string
+    flag.StringVar(&inputFile, "urls", "", "The file containing all urls")
 
     flag.Parse()
 
-    if len(scopeFile) == 0 {
-        log.Fatal("missing required argument -scope")
+    var urls []string
+    var err error
+
+    if !isInPipe() {
+        urls, err = utils.DeserializeUrls(inputFile)
+        if err != nil {
+            log.Fatal(err)
+        }
+    } else {
+        urls = readStdin(os.Stdin)
     }
 
-    scope := utils.DeserializeScope(scopeFile)
+    scope, err := utils.DeserializeScope(scopeFile)
+    if err != nil {
+        log.Fatal(err)
+    }
 
-    cr:= gocrawler.New(scope, nil)
-
-    cr.Config.MaxThreads = threadCount
+    config := &gocrawler.Config{
+        MaxThreads: threadCount,
+        MaxRequests: requestThrottle,
+    }
+    cr:= gocrawler.New(scope, config)
 
     cr.AddCallback(func(res *http.Response, _ string) {
         fmt.Println(res.Request.URL)
