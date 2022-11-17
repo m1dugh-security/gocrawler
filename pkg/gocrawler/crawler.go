@@ -4,7 +4,6 @@ import (
     "net/http"
     "regexp"
     "io/ioutil"
-    "sync"
     "github.com/m1dugh/gocrawler/pkg/types"
     "github.com/m1dugh/gocrawler/pkg/utils"
 )
@@ -28,7 +27,7 @@ type Callback func(*http.Response, string)
 
 type Crawler struct {
     Scope *types.Scope
-    urls *types.Queue
+    urls *types.Queue[string]
     Discovered *types.StringSet
     callbacks []Callback
     Config *Config
@@ -42,7 +41,7 @@ func New(scope *types.Scope, config *Config) *Crawler {
 
     res := &Crawler{
         Scope: scope,
-        urls: types.CreateQueue(),
+        urls: types.NewQueue[string](),
         Discovered: types.NewStringSet(nil),
         callbacks: nil,
         Config: config,
@@ -68,12 +67,11 @@ func (cr *Crawler) extractPageInfo(url string) ([]string, []string) {
 
     body, err := ioutil.ReadAll(resp.Body)
     if err != nil {
-        resp.Body.Close()
         return nil, nil
     }
+    defer resp.Body.Close()
 
     var content string = string(body)
-    resp.Body.Close()
     cr.runCallbacks(resp, content)
 
     return utils.ExtractUrls(content, rootUrl), utils.ExtractEmails(content)
@@ -83,34 +81,20 @@ func (cr *Crawler) AddCallback(f Callback) {
     cr.callbacks = append(cr.callbacks, f)
 }
 
-const maxWorkers = 10
-
-func (cr *Crawler) crawlPage(count *uint, mut *sync.Mutex, url string) {
-
+func (cr *Crawler) crawlPage(threads *types.ThreadThrottler, url string) {
+    defer threads.Done()
     if !cr.Scope.InScope(url) {
-        mut.Lock()
-        *count = *count - 1
-        mut.Unlock()
         return
     }
 
-    mut.Lock()
     added := cr.Discovered.AddWord(url)
-    mut.Unlock()
-
     if added {
         cr.throttler.AskRequest()
         urls, _ := cr.extractPageInfo(url)
-        mut.Lock()
         for _, u := range urls {
             cr.urls.Enqueue(u)
         }
-        mut.Unlock()
     }
-
-    mut.Lock()
-    *count = *count - 1
-    mut.Unlock()
 }
 
 func (cr *Crawler) Crawl(endpoints []string) {
@@ -118,25 +102,18 @@ func (cr *Crawler) Crawl(endpoints []string) {
         cr.urls.Enqueue(v)
     }
 
+    threads := types.NewThreadThrottler(cr.Config.MaxThreads)
 
-    var workerCount uint = 0
-    var mut sync.Mutex
-
-    for cr.urls.Length > 0 || workerCount > 0{
-        for workerCount < cr.Config.MaxThreads {
-            mut.Lock()
-            elem, err := cr.urls.Dequeue()
-            mut.Unlock()
+    for cr.urls.Length() > 0 {
+        for cr.urls.Length() > 0 || threads.Threads() > 0 {
+            url, err := cr.urls.Dequeue()
             if err != nil {
-                break
+                continue
             }
-
-            url := elem.(string)
-            mut.Lock()
-            workerCount++
-            mut.Unlock()
-            go cr.crawlPage(&workerCount, &mut, url)
+            threads.RequestThread()
+            go cr.crawlPage(threads, url)
         }
+        threads.Wait()
     }
 }
 

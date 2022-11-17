@@ -1,0 +1,11 @@
+{
+    "include": [
+        "hackerone\\.com",
+        "^api\\.hackerone\\.com"
+    ],
+
+    "exclude": [
+        "docs\\.hackerone\\.com",
+        "^http://"
+    ]
+}

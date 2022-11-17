@@ -38,7 +38,7 @@ func main() {
     var threadCount uint
     flag.UintVar(&threadCount, "threads", 10, "Number of max concurrent threads")
     var requestThrottle int
-    flag.IntVar(&requestThrottle, "requests", -1, "Max requests per second (-1 is no throttle)")
+    flag.IntVar(&requestThrottle, "requests", -1, "Max requests per second")
     var inputFile string
     flag.StringVar(&inputFile, "urls", "", "The file containing all urls")
 

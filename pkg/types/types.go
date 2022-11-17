@@ -128,10 +128,10 @@ func (t* ThreadThrottler) Threads() uint {
 
 func (t *ThreadThrottler) RequestThread() {
     t.mut.Lock()
-    defer t.mut.Unlock()
     if t.threads < t.MaxThreads {
         t.threads++;
         t.wg.Add(1)
+        t.mut.Unlock()
         return
     }
     t.mut.Unlock()
@@ -140,6 +140,7 @@ func (t *ThreadThrottler) RequestThread() {
         if t.threads < t.MaxThreads {
             t.wg.Add(1)
             t.threads++
+            t.mut.Unlock()
             break
         }
         t.mut.Unlock()
@@ -147,12 +148,12 @@ func (t *ThreadThrottler) RequestThread() {
 }
 
 func (t *ThreadThrottler) Done() {
-    t.wg.Done()
     t.mut.Lock()
     if t.threads > 0 {
         t.threads--
     }
     t.mut.Unlock()
+    t.wg.Done()
 }
 
 func (t *ThreadThrottler) Wait() {
