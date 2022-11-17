@@ -1,147 +1,9 @@
 package types
 
 import (
-    "fmt"
-    "regexp"
+    "errors"
+    "sync"
 )
-
-type PrefixTree struct {
-    chr byte
-    children []*PrefixTree
-    occurences int
-}
-
-
-func (parent *PrefixTree) _insertChildrenAt(index int,
-            chr byte,
-            occurences int) *PrefixTree {
-    var child *PrefixTree = &PrefixTree{chr, nil, occurences}
-    children := parent.children
-    if index == len(children) {
-        parent.children = append(children, child)
-    } else if index < len(children) {
-        parent.children = append(children[:index + 1], children[index:]...)
-        parent.children[index] = child
-    }
-
-    return child
-}
-
-
-func _binSearch(children []*PrefixTree, start int, end int, x byte) int {
-
-    for start < end {
-        middle := start + (end - start) / 2
-
-        c := children[middle].chr
-        if c == x {
-            return middle
-        } else if x < c {
-            end = middle
-        } else {
-            start = middle + 1
-        }
-    }
-
-    return start
-}
-
-func (t *PrefixTree) _searchWord(str string, strlen int, index int) int {
-    if index == strlen {
-        return t.occurences
-    }
-    c := str[index]
-    children := len(t.children)
-    if children == 0 {
-        return 0
-    } else {
-        pos := _binSearch(t.children, 0, children, c)
-        if pos >= children {
-            return 0
-        } else if t.children[pos].chr == c {
-            return t.children[pos]._searchWord(str, strlen, index + 1)
-        } else {
-            return 0
-        }
-    }
-}
-
-func (t *PrefixTree) SearchWord(str string) int {
-    return t._searchWord(str, len(str), 0)
-}
-
-func (t *PrefixTree) _listWords(prefix string) []string {
-
-    var res []string = nil
-    prefix = fmt.Sprintf("%s%c", prefix, t.chr)
-    if t.occurences > 0 {
-        res = append(res, prefix)
-    }
-    for _, v := range t.children {
-        res = append(res, v._listWords(prefix)...)
-    }
-
-    return res
-}
-
-func (t *PrefixTree) ListWords() []string {
-    return t._listWords("")
-}
-
-func CreatePrefixTree() *PrefixTree {
-    res := &PrefixTree{0, nil, 0}
-    return res
-}
-
-
-/**
- *  \return the (Found Prefix tree or parent if not found,
- the last found index + 1,
- the expected pos of the children)
- */
-func (t *PrefixTree) _searchNode(str string, strlen int, index int) (*PrefixTree, int, int) {
-    children := len(t.children)
-    if index == strlen {
-        return t, index, -1
-    } else if children == 0 {
-        return t, index, 0
-    } else {
-        c := str[index]
-        pos := _binSearch(t.children, 0, children, c)
-        if pos >= children || t.children[pos].chr != c {
-            return t, index, pos
-        } else {
-            return t.children[pos]._searchNode(str, strlen, index + 1)
-        }
-    }
-}
-
-func (t *PrefixTree) AddWord(word string) bool {
-    wl := len(word)
-    node, index, pos := t._searchNode(word, wl, 0)
-    if pos == -1 {
-        res := node.occurences == 0
-        node.occurences++
-        return res
-    } else {
-        node = node._insertChildrenAt(pos, word[index], 0)
-        index++
-        for index < wl {
-            pos = _binSearch(node.children, 0, len(node.children), word[index])
-            if pos >= len(node.children) || node.children[pos].chr != word[index] {
-                node = node._insertChildrenAt(pos, word[index], 0)
-            } else {
-                node = node.children[pos]
-            }
-            index++
-        }
-
-        res := node.occurences == 0
-        node.occurences++
-        return res
-    }
-}
-
 
 func _compareStrings(a string, b string) int {
     la := len(a)
@@ -238,54 +100,107 @@ func (set *StringSet) ToArray() []string {
     return dest
 }
 
-type Scope struct {
-    Exclude []*regexp.Regexp
-    Include []*regexp.Regexp
+const extensionSize int = 10
+
+type Queue[T any] struct {
+    enqueueIndex int
+    dequeueIndex int
+    values []T
+    _arraylen int
+    length int
+    mut     *sync.Mutex
 }
 
-func NewScope(include []string, exclude []string) *Scope {
-    res := &Scope{}
-    res.Include = make([]*regexp.Regexp, 0, len(include))
-    for _, exp := range include {
-        res.AddRule(exp, true)
+func NewQueue[T any]() *Queue[T] {
+    queue := &Queue[T]{
+        enqueueIndex: 0,
+        dequeueIndex: 0,
+        values: make([]T, extensionSize),
+        _arraylen: extensionSize,
+        length: 0,
+        mut: &sync.Mutex{},
     }
+    return queue
+}
 
-    res.Exclude = make([]*regexp.Regexp, 0, len(exclude))
-    for _, exp := range exclude {
-        res.AddRule(exp, false)
+func (q *Queue[T]) _getElements() []T {
+    res := make([]T, q.length)
+    if q.dequeueIndex < q.enqueueIndex {
+        for i := q.dequeueIndex; i < q.enqueueIndex;i++ {
+            res[i] = q.values[i]
+        }
+    } else {
+        index := 0
+        for i := q.dequeueIndex; i < q._arraylen;i++ {
+            res[index] = q.values[i]
+            index++
+        }
+
+        for i := 0; i < q.enqueueIndex; i++ {
+            res[index] = q.values[i]
+            index++
+        }
     }
 
     return res
 }
 
-func (s *Scope) AddRule(v string, in bool) {
-    
-    re, err := regexp.Compile(v)
-    if err != nil {
+func (q *Queue[T]) _shrink() {
+    elements := q._getElements()
+    q.values = elements
+    q._arraylen = len(elements)
+    q.length = q._arraylen
+    q.dequeueIndex = 0
+    q.enqueueIndex = 0
+}
+
+func (q *Queue[T]) _flatten() {
+    elements := q._getElements()
+    copy(q.values, elements)
+    q.dequeueIndex = 0
+    q.enqueueIndex = len(elements) % q._arraylen
+}
+
+func (q *Queue[T]) _extend(deltasize int) {
+    freespace := q._arraylen - q.length
+    required := deltasize - freespace
+    if required <= 0 {
         return
     }
-    if in {
-        s.Include = append(s.Include, re)
-    } else {
-        s.Exclude = append(s.Exclude, re)
-    }
+
+    q._flatten()
+    q.values = append(q.values, make([]T, required)...)
+    q.enqueueIndex = q._arraylen
+    q._arraylen += required
 }
 
-func (s *Scope) InScope(url string) bool {
-    valid := false
-    for _, re := range s.Include {
-        if re.MatchString(url) {
-            valid = true
-            break
-        }
+func (q *Queue[T]) Enqueue(x T) {
+    q.mut.Lock()
+    defer q.mut.Unlock()
+    if q.length == q._arraylen {
+        q._extend(extensionSize)
     }
-
-    for i := 0; i < len(s.Exclude) && valid; i++ {
-        if s.Exclude[i].MatchString(url) {
-            valid = false
-        }
-    }
-
-    return valid
+    q.length++
+    q.values[q.enqueueIndex] = x
+    q.enqueueIndex = (q.enqueueIndex + 1) % q._arraylen
 }
 
+func (q *Queue[T]) Dequeue() (T, error) {
+    q.mut.Lock()
+    defer q.mut.Unlock()
+    var res T
+    if q.length == 0 {
+        return res, errors.New("Could not dequeue empty queue")
+    }
+    res = q.values[q.dequeueIndex]
+    q.length--
+    q.dequeueIndex = (q.dequeueIndex + 1) % q._arraylen
+    return res, nil
+}
+
+func (q *Queue[T]) Length() int {
+    q.mut.Lock()
+    defer q.mut.Unlock()
+    res := q.length
+    return res
+}
