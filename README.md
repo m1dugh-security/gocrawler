@@ -134,14 +134,13 @@ https://hackerone.com/assets/static/css/main.b2076af6.css
 ## GoCrawler Go Library
 ```golang
 import (
-    types "github.com/m1dugh/gocrawler/pkg/types"
     "github.com/m1dugh/gocrawler/pkg/gocrawler"
 )
 
 func main() {
     includes := []string{`hackerone\.com`}
     excludes := []string{`api\.hackerone\.com`, `^http://`}
-    scope := types.NewScope(includes, excludes)
+    scope := gocrawler.NewScope(includes, excludes)
 
     config := &gocrawler.Config{
         MaxThreads: 10,     // Sets the number of threads to 10
