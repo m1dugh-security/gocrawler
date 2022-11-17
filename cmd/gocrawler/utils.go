@@ -1,4 +1,4 @@
-package utils
+package main
 
 import (
     "fmt"
@@ -7,7 +7,7 @@ import (
     "bufio"
     "encoding/json"
     "errors"
-    "github.com/m1dugh/gocrawler/pkg/types"
+    "github.com/m1dugh/gocrawler/pkg/gocrawler"
 )
 
 type ScopeRepr struct {
@@ -15,7 +15,7 @@ type ScopeRepr struct {
     Ex []string `json:"exclude"`
 }
 
-func DeserializeScope(path string) (*types.Scope, error) {
+func DeserializeScope(path string) (*gocrawler.Scope, error) {
     f, err := os.Open(path)
 
     if err != nil {
@@ -34,7 +34,7 @@ func DeserializeScope(path string) (*types.Scope, error) {
     if err != nil {
         return nil, errors.New(fmt.Sprintf("Could not parse json file %s", path))
     }
-    return types.NewScope(s.In, s.Ex), nil
+    return gocrawler.NewScope(s.In, s.Ex), nil
 }
 
 func DeserializeUrls(path string) ([]string, error) {

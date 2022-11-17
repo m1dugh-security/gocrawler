@@ -5,7 +5,6 @@ import (
     "regexp"
     "io/ioutil"
     "github.com/m1dugh/gocrawler/pkg/types"
-    "github.com/m1dugh/gocrawler/pkg/utils"
 )
 
 var rootUrlRegex = regexp.MustCompile(`https?://([\w\-]+\.)[a-z]{2,7}`)
@@ -26,7 +25,7 @@ func DefaultConfig() *Config {
 type Callback func(*http.Response, string)
 
 type Crawler struct {
-    Scope *types.Scope
+    Scope *Scope
     urls *types.Queue[string]
     Discovered *types.StringSet
     callbacks []Callback
@@ -34,7 +33,7 @@ type Crawler struct {
     throttler *types.RequestThrottler
 }
 
-func New(scope *types.Scope, config *Config) *Crawler {
+func New(scope *Scope, config *Config) *Crawler {
     if config == nil {
         config = DefaultConfig()
     }
@@ -74,7 +73,7 @@ func (cr *Crawler) extractPageInfo(url string) ([]string, []string) {
     var content string = string(body)
     cr.runCallbacks(resp, content)
 
-    return utils.ExtractUrls(content, rootUrl), utils.ExtractEmails(content)
+    return ExtractUrls(content, rootUrl), ExtractEmails(content)
 }
 
 func (cr *Crawler) AddCallback(f Callback) {

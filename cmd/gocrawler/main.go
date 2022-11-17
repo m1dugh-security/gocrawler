@@ -9,7 +9,6 @@ import (
     "bufio"
     "io"
     "github.com/m1dugh/gocrawler/pkg/gocrawler"
-    "github.com/m1dugh/gocrawler/pkg/utils"
 )
 
 func isInPipe() bool {
@@ -48,7 +47,10 @@ func main() {
     var err error
 
     if !isInPipe() {
-        urls, err = utils.DeserializeUrls(inputFile)
+        if len(inputFile) == 0 {
+            log.Fatal("Missing urls file or stdin input")
+        }
+        urls, err = DeserializeUrls(inputFile)
         if err != nil {
             log.Fatal(err)
         }
@@ -56,7 +58,11 @@ func main() {
         urls = readStdin(os.Stdin)
     }
 
-    scope, err := utils.DeserializeScope(scopeFile)
+
+    if len(scopeFile) == 0 {
+        log.Fatal("Missing -scope")
+    }
+    scope, err := DeserializeScope(scopeFile)
     if err != nil {
         log.Fatal(err)
     }
