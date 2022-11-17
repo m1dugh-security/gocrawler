@@ -35,12 +35,17 @@ func _compareStrings(a string, b string) int {
 }
 
 
-type StringSet []string;
+type StringSet struct {
+    values []string
+    mut *sync.Mutex
+}
 
 func NewStringSet(values []string) *StringSet {
     
-    var res *StringSet = &StringSet{}
-    *res = make([]string, len(values))
+    var res *StringSet = &StringSet{
+        values: make([]string, len(values)),
+        mut: &sync.Mutex{},
+    }
 
     for _, v := range values {
         res.AddWord(v)
@@ -49,14 +54,18 @@ func NewStringSet(values []string) *StringSet {
     return res
 }
 
+func (set *StringSet) elemAt(i int) string {
+    return set.values[i]
+}
+
 func (set *StringSet) _binsearch(value string) (int, bool) {
 
     start := 0
-    end := len(*set)
+    end := len(set.values)
 
     for start < end {
         middle := start + (end - start) / 2
-        s := (*set)[middle]
+        s := set.elemAt(middle)
         res := _compareStrings(value, s)
         if res == 0 {
             return middle, true
@@ -71,15 +80,17 @@ func (set *StringSet) _binsearch(value string) (int, bool) {
 }
 
 func (set *StringSet) _insertAt(value string, pos int) {
-    *set = append(*set, value)
-    for i := len(*set) - 1; i > pos; i-- {
-        (*set)[i] = (*set)[i - 1]
+    set.values = append(set.values, value)
+    for i := len(set.values) - 1; i > pos; i-- {
+        set.values[i] = set.elemAt(i - 1)
     }
 
-    (*set)[pos] = value
+    set.values[pos] = value
 }
 
 func (set *StringSet) AddWord(value string) bool {
+    set.mut.Lock()
+    defer set.mut.Unlock()
     pos, found := set._binsearch(value)
     if found {
         return false
@@ -90,14 +101,25 @@ func (set *StringSet) AddWord(value string) bool {
 }
 
 func (set *StringSet) ContainsWord(value string) bool {
+    set.mut.Lock()
     _, found := set._binsearch(value)
+    set.mut.Unlock()
     return found
 }
 
 func (set *StringSet) ToArray() []string {
-    dest := make([]string, len(*set))
-    copy(dest, *set)
+    set.mut.Lock()
+    defer set.mut.Unlock()
+    dest := make([]string, len(set.values))
+    copy(dest, set.values)
     return dest
+}
+
+func (set *StringSet) Length() int {
+    set.mut.Lock()
+    l := len(set.values)
+    set.mut.Unlock()
+    return l
 }
 
 const extensionSize int = 10
