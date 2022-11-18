@@ -73,7 +73,8 @@ func (cr *Crawler) extractPageInfo(url string) ([]string, []string) {
     var content string = string(body)
     cr.runCallbacks(resp, content)
 
-    return ExtractUrls(content, rootUrl), ExtractEmails(content)
+    // return ExtractUrls(content, rootUrl), ExtractEmails(content)
+    return ExtractUrls(content, rootUrl), nil
 }
 
 func (cr *Crawler) AddCallback(f Callback) {

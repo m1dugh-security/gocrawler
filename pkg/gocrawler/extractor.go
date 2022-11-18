@@ -9,13 +9,14 @@ import (
 
 var (
     param string = `(\?[\-\w=\.~\;\[\]&]+)?`
-    localUrl = `(/[\w\.~=\-]+)+/?`
+    anchor = `(#[\w\.\-]*)?`
+    localUrl = `(/[\w\.~=\-]+)+/?` + anchor
 )
 
 var urlRegex = regexp.MustCompile(`https?://([\w\-]+\.)+[a-z]{2,7}` + localUrl + param)
 var emailRegex = regexp.MustCompile(`[\w\-\.]+@([\w\-]+\.)+[a-z]{2,7}`)
 
-var tagExtractor = regexp.MustCompile(`(src|href)="`+ localUrl + param + `"`)
+var tagExtractor = regexp.MustCompile(`("|')`+ localUrl + param + `("|')`)
 
 func ExtractUrls(page string, root_url string) []string {
     
