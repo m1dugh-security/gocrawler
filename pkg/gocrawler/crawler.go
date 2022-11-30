@@ -24,11 +24,16 @@ func DefaultConfig() *Config {
 
 type Callback func(*http.Response, string)
 
+type cb_holder struct {
+    Callback
+    id int
+}
+
 type Crawler struct {
     Scope *Scope
     urls *types.Queue[string]
     Discovered *types.StringSet
-    callbacks []Callback
+    callbacks []cb_holder
     Config *Config
     throttler *types.RequestThrottler
 }
@@ -51,8 +56,8 @@ func New(scope *Scope, config *Config) *Crawler {
 }
 
 func (cr *Crawler) runCallbacks(resp *http.Response, body string) {
-    for _, f := range cr.callbacks {
-        f(resp, body)
+    for _, holder := range cr.callbacks {
+        holder.Callback(resp, body)
     }
 }
 
@@ -68,17 +73,37 @@ func (cr *Crawler) extractPageInfo(url string) ([]string, []string) {
     if err != nil {
         return nil, nil
     }
-    defer resp.Body.Close()
-
     var content string = string(body)
+    resp.Body.Close()
     cr.runCallbacks(resp, content)
 
     // return ExtractUrls(content, rootUrl), ExtractEmails(content)
     return ExtractUrls(content, rootUrl), nil
 }
 
-func (cr *Crawler) AddCallback(f Callback) {
-    cr.callbacks = append(cr.callbacks, f)
+/// Adds a callback to the crawler
+/// Returns a handler to remove the callback
+func (cr *Crawler) AddCallback(f Callback) int {
+    var id int = 0
+    if len(cr.callbacks) > 0 {
+        id = cr.callbacks[len(cr.callbacks) - 1].id + 1
+    }
+    cr.callbacks = append(cr.callbacks, cb_holder{
+        id: id,
+        Callback: f,
+    })
+    return id
+}
+
+func (cr *Crawler) RemoveCallback(handler int) {
+    var pos int = 0
+    for pos < len(cr.callbacks) && cr.callbacks[pos].id != handler {
+        pos++
+    }
+    if pos < len(cr.callbacks) {
+        res := cr.callbacks[:pos]
+        cr.callbacks = append(res, cr.callbacks[pos + 1:]...)
+    }
 }
 
 func (cr *Crawler) crawlPage(threads *types.ThreadThrottler, url string) {
