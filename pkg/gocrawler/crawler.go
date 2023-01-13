@@ -2,13 +2,11 @@ package gocrawler
 
 import (
     "net/http"
-    "regexp"
-    "io/ioutil"
     "github.com/m1dugh/gocrawler/pkg/types"
+    "bytes"
+    "io"
+    "strings"
 )
-
-var rootUrlRegex = regexp.MustCompile(`https?://([\w\-]+\.)[a-z]{2,7}`)
-
 
 type Config struct {
     MaxThreads uint
@@ -61,24 +59,34 @@ func (cr *Crawler) runCallbacks(resp *http.Response, body string) {
     }
 }
 
-func (cr *Crawler) extractPageInfo(url string) ([]string, []string) {
-    rootUrl := rootUrlRegex.FindString(url)
+func (cr *Crawler) extractPageInfo(url string) []string {
     resp, err := http.Get(url)
     if err != nil {
-        return nil, nil
+        return nil
     }
 
+    var res []string
 
-    body, err := ioutil.ReadAll(resp.Body)
+    body, err := io.ReadAll(resp.Body)
     if err != nil {
-        return nil, nil
+        return nil
     }
-    var content string = string(body)
     resp.Body.Close()
+
+    content := string(body)
+
+    for _, contentType := range resp.Header["Content-Type"] {
+        if strings.Contains(contentType, "text/html") {
+            reader := bytes.NewReader(body)
+            res = parseHTMLPage(reader, url)
+        } else {
+            res = ExtractUrls(content, url)
+        }
+    }
+
     cr.runCallbacks(resp, content)
 
-    // return ExtractUrls(content, rootUrl), ExtractEmails(content)
-    return ExtractUrls(content, rootUrl), nil
+    return res
 }
 
 /// Adds a callback to the crawler
@@ -115,7 +123,7 @@ func (cr *Crawler) crawlPage(threads *types.ThreadThrottler, url string) {
     added := cr.Discovered.AddWord(url)
     if added {
         cr.throttler.AskRequest()
-        urls, _ := cr.extractPageInfo(url)
+        urls := cr.extractPageInfo(url)
         for _, u := range urls {
             cr.urls.Enqueue(u)
         }

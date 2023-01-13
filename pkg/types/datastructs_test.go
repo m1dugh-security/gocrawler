@@ -6,7 +6,7 @@ import (
     "sync"
 )
 
-const sample int = 1000
+const sample int = 10000
 
 func TestQueueSingleThread(t *testing.T) {
     q := NewQueue[string]()
