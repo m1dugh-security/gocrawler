@@ -9,14 +9,16 @@ import (
 )
 
 type Config struct {
-    MaxThreads uint
+    MaxThreads  uint
     MaxRequests int
+    Headers     http.Header
 }
 
 func DefaultConfig() *Config {
     return &Config{
         MaxThreads: 10,
         MaxRequests: -1,
+        Headers: nil,
     }
 }
 
@@ -28,12 +30,13 @@ type cb_holder struct {
 }
 
 type Crawler struct {
-    Scope *Scope
-    urls *types.Queue[string]
-    Discovered *types.StringSet
-    callbacks []cb_holder
-    Config *Config
-    throttler *types.RequestThrottler
+    Scope       *Scope
+    urls        *types.Queue[string]
+    Discovered  *types.StringSet
+    callbacks   []cb_holder
+    Config      *Config
+    throttler   *types.RequestThrottler
+    client      *http.Client
 }
 
 func New(scope *Scope, config *Config) *Crawler {
@@ -48,6 +51,7 @@ func New(scope *Scope, config *Config) *Crawler {
         callbacks: nil,
         Config: config,
         throttler: types.NewRequestThrottler(config.MaxRequests),
+        client: &http.Client{},
     }
 
     return res
@@ -60,7 +64,15 @@ func (cr *Crawler) runCallbacks(resp *http.Response, body string) {
 }
 
 func (cr *Crawler) extractPageInfo(url string) []string {
-    resp, err := http.Get(url)
+    request, err := http.NewRequest("GET", url, nil)
+    if err != nil {
+        return nil
+    }
+
+    for k, v := range cr.Config.Headers {
+        request.Header[k] = v
+    }
+    resp, err := cr.client.Do(request)
     if err != nil {
         return nil
     }

@@ -9,6 +9,7 @@ import (
     "bufio"
     "io"
     "github.com/m1dugh/gocrawler/pkg/gocrawler"
+    "errors"
 )
 
 func isInPipe() bool {
@@ -30,6 +31,64 @@ func readStdin(r io.Reader) []string {
     return res
 }
 
+type headersFlags struct {
+    header http.Header
+}
+
+func (h *headersFlags) String() string {
+    return "TODO: provide implementation for headersFlag.String in main package"
+}
+
+func (h *headersFlags) Set(value string) error {
+    
+    var err error = errors.New("headers should be provided as 'Key: value'")   
+    
+    var key, headerValue string
+    var spaceGroupCount int = 0
+    var i int
+    for i = 0; i < len(value) && value[i] != ':'; i++ {
+        c := value[i]
+        if c == ' ' {
+            if i == 0 || value[i - 1] != ' ' {
+                spaceGroupCount++
+            }
+        } else if (c <= 'Z' && c >= 'A') || (c <= 'z' && c >= 'a') || (c <= '9' && c >= '0') || c == '-' {
+            if spaceGroupCount > 1 {
+                return err
+            }
+            key += string(c)
+        } else {
+            return err
+        }
+    }
+
+    if i == 0 || i + 1 >= len(value) {
+        return err
+    }
+
+    spaceGroupCount = 0
+
+    for i++; i < len(value); i++ {
+        c := value[i]
+        if c == ' ' {
+            if value[i - 1] != ' ' {
+                spaceGroupCount++
+            }
+        } else if spaceGroupCount <= 1 {
+            headerValue += string(c)
+        } else {
+            return err
+        }
+    }
+    h.header.Set(key, value)
+
+    return nil
+}
+
+func  (h headersFlags) ToHTTPHeader() http.Header {
+    return h.header
+}
+
 func main() {
 
     var scopeFile string
@@ -40,6 +99,9 @@ func main() {
     flag.IntVar(&requestThrottle, "requests", -1, "Max requests per second")
     var inputFile string
     flag.StringVar(&inputFile, "urls", "", "The file containing all urls")
+
+    var headers headersFlags = headersFlags{make(map[string][]string)}
+    flag.Var(&headers, "H", "additional headers to add to the crawler")
 
     flag.Parse()
 
@@ -70,6 +132,7 @@ func main() {
     config := &gocrawler.Config{
         MaxThreads: threadCount,
         MaxRequests: requestThrottle,
+        Headers: headers.ToHTTPHeader(),
     }
     cr:= gocrawler.New(scope, config)
 

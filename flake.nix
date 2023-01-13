@@ -21,7 +21,7 @@
         packages.${system} = {
             go-crawler = pkgs.buildGoModule rec {
                 pname = "go-crawler";
-                version = "1.4.10";
+                version = "1.5.0";
 
                 src = lib.cleanSource ./.;
 
