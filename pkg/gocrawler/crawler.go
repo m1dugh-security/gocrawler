@@ -116,16 +116,14 @@ func (cr *Crawler) RemoveCallback(handler int) {
 
 func (cr *Crawler) crawlPage(threads *types.ThreadThrottler, url string) {
     defer threads.Done()
-    if !cr.Scope.InScope(url) {
-        return
-    }
-
     added := cr.Discovered.AddWord(url)
     if added {
         cr.throttler.AskRequest()
         urls := cr.extractPageInfo(url)
         for _, u := range urls {
-            cr.urls.Enqueue(u)
+            if cr.Scope.InScope(u) {
+                cr.urls.Enqueue(u)
+            }
         }
     }
 }
