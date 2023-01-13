@@ -2,3 +2,6 @@
 # go build files
 dist/
 vendor/
+
+# nix build files
+result

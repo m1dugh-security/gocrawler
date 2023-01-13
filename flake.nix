@@ -21,11 +21,11 @@
         packages.${system} = {
             go-crawler = pkgs.buildGoModule rec {
                 pname = "go-crawler";
-                version = "1.4.7";
+                version = "1.4.9";
 
-                src = ./.;
+                src = lib.cleanSource ./.;
 
-                vendorHash = "sha256-pQpattmS9VmO3ZIQUFn66az8GSmB4IvYhTTCFn6SUmo=";
+                vendorSha256 = "sha256-cPOZ+95ajSi5AJL9aTegtI/7dre0nRB52v2pY6HD0P0=";
             };
 
             default = self.packages.${system}.go-crawler;
