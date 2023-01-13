@@ -1,11 +1,11 @@
 {
     "include": [
         "hackerone\\.com",
-        "^api\\.hackerone\\.com"
+        "^https?://api\\.hackerone\\.com"
     ],
 
     "exclude": [
-        "docs\\.hackerone\\.com",
+        "^https?://docs\\.hackerone\\.com",
         "^http://"
     ]
 }
