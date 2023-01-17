@@ -20,6 +20,16 @@ To install `GoCrawler` as a `GO` module:
 $ go install -v github.com/m1dugh/gocrawler@latest
 ```
 
+### Nix packages manager
+The crawler can also be used as a `nix` flake
+```shell
+# If nix flakes are enabled
+$ nix run github:m1dugh/go-crawler#
+
+# If nix flakes are not enabled
+$ nix --experimental-features 'nix-command flakes' run github:m1dugh/go-crawler
+```
+
 ### Docker 
 The docker hub image is coming soon...
 
