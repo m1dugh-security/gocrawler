@@ -124,7 +124,12 @@ func main() {
     if len(scopeFile) == 0 {
         log.Fatal("Missing -scope")
     }
-    scope, err := DeserializeScope(scopeFile)
+
+    body, err := os.ReadFile(scopeFile)
+    if err != nil {
+        log.Fatal(err)
+    }
+    scope, err := gocrawler.DeserializeScope(body)
     if err != nil {
         log.Fatal(err)
     }

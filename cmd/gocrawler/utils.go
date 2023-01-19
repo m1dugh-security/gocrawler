@@ -2,40 +2,11 @@ package main
 
 import (
     "fmt"
-    "io/ioutil"
     "os"
     "bufio"
-    "encoding/json"
     "errors"
-    "github.com/m1dugh/gocrawler/pkg/gocrawler"
 )
 
-type ScopeRepr struct {
-    In []string `json:"include"`
-    Ex []string `json:"exclude"`
-}
-
-func DeserializeScope(path string) (*gocrawler.Scope, error) {
-    f, err := os.Open(path)
-
-    if err != nil {
-        return nil, errors.New(fmt.Sprintf("Could not open file %s", path))
-    }
-
-    defer f.Close()
-
-    bytes, err := ioutil.ReadAll(f)
-    if err != nil {
-        return nil, errors.New(fmt.Sprintf("Could not read file %s", path))
-    }
-
-    var s ScopeRepr
-    err = json.Unmarshal(bytes, &s)
-    if err != nil {
-        return nil, errors.New(fmt.Sprintf("Could not parse json file %s", path))
-    }
-    return gocrawler.NewScope(s.In, s.Ex), nil
-}
 
 func DeserializeUrls(path string) ([]string, error) {
     f, err := os.Open(path)
