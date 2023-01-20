@@ -77,7 +77,7 @@ func (t *ThreadThrottler) RequestThread() {
     // Thread count is incremented before being started avoiding it to be
     // fetched with the wrong value while a thread is being requested.
     t.threads++
-    if t.threads < t.MaxThreads {
+    if t.threads <= t.MaxThreads {
         t.wg.Add(1)
         t.mut.Unlock()
         return
@@ -85,7 +85,7 @@ func (t *ThreadThrottler) RequestThread() {
     t.mut.Unlock()
     for true {
         t.mut.Lock()
-        if t.threads < t.MaxThreads {
+        if t.threads <= t.MaxThreads {
             t.wg.Add(1)
             t.mut.Unlock()
             break
