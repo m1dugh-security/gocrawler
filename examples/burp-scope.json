@@ -1,0 +1,32 @@
+{
+    "target": {
+        "scope": {
+            "advanced": true,
+            "include": [
+                {
+                    "enabled": true,
+                    "host": "^hackerone\\.com$",
+                    "protocol": "any"
+                },
+                {
+                    "enabled": true,
+                    "host": "^api\\.hackerone\\.com$",
+                    "protocol": "^https$"
+                }
+            ],
+
+            "exclude": [
+                {
+                    "enabled": true,
+                    "host": "^docs\\.hackerone\\.com$",
+                    "protocol": "any"
+                },
+                {
+                    "enabled": true,
+                    "host": "^hackerone\\.com$",
+                    "protocol": "^http$"
+                }
+            ]
+        }
+    }
+}

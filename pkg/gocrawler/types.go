@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+    "errors"
 )
 
 type ScopeEntry struct {
@@ -80,7 +81,6 @@ func (s *ScopeEntry) IsValid(host, protocol, file string) bool {
         }
     } else {
         url := fmt.Sprintf("%s://%s%s", protocol, host, file)
-        fmt.Printf("url: %s\n", url)
         if s.urlReg != nil && !s.urlReg.MatchString(url) {
             return false
         }
@@ -90,13 +90,16 @@ func (s *ScopeEntry) IsValid(host, protocol, file string) bool {
 }
 
 type Scope struct {
-    Advanced bool           `json:"advanced_mode",json:"advanced"`
+    Advanced bool           `json:"advanced"`
     Exclude []*ScopeEntry   `json:"exclude"`
     Include []*ScopeEntry   `json:"include"`
 }
 
-func NewSimpleScope(include []string, exclude []string) *Scope {
-    scope := NewScope(make([]*ScopeEntry, 0, len(include)), make([]*ScopeEntry, 0, len(exclude)), false)
+func NewSimpleScope(include []string, exclude []string) (*Scope, error) {
+    scope, err := NewScope(make([]*ScopeEntry, 0, len(include)), make([]*ScopeEntry, 0, len(exclude)), false)
+    if err != nil {
+        return nil, err
+    }
 
     for _, s := range include {
         entry := &ScopeEntry{
@@ -114,50 +117,77 @@ func NewSimpleScope(include []string, exclude []string) *Scope {
         scope.AddRule(entry, false)
     }
 
-    return scope
+    return scope, err
 }
 
 type burpScope struct {
-    scope *Scope `json:"scope"`
-    target *struct{
-        scope *Scope `json:"scope"`
+    Scope *Scope `json:"scope"`
+    Target *struct{
+        Scope *Scope `json:"scope"`
     } `json:"target"`
 }
 
-func (s *burpScope) Scope() *Scope {
-    if s.target != nil && s.target.scope != nil {
-        return s.target.scope
-    } else {
-        return s.scope
+func (s *Scope) setup() error {
+    for _, entry := range s.Include {
+        err := entry.Setup(s.Advanced)
+        if err != nil {
+            return err
+        }
     }
+
+    for _, entry := range s.Exclude {
+        err := entry.Setup(s.Advanced)
+        if err != nil {
+            return err
+        }
+    }
+
+    return nil
 }
 
-func DeserializeScope(body []byte) (*Scope, error) {
-    var scope *Scope
-    err := json.Unmarshal(body, scope)
+func (s *burpScope) getScope() (*Scope, error) {
+    var res *Scope
+    if s.Target != nil && s.Target.Scope != nil {
+        res = s.Target.Scope
+    } else {
+        res = s.Scope
+    }
+
+    err := res.setup()
     if err != nil {
         return nil, err
     }
 
-    return scope, nil
+    return res, nil
+
 }
 
-func NewScope(include []*ScopeEntry, exclude []*ScopeEntry, advanced bool) *Scope {
+func DeserializeScope(body []byte) (*Scope, error) {
+    var scope burpScope
+    err := json.Unmarshal(body, &scope)
+    if err != nil {
+        return nil, err
+    }
+
+    res, err := scope.getScope()
+    if err != nil {
+        return nil, errors.New(fmt.Sprintf("Could not deserialize scope: %s", err))
+    }
+    return res, nil
+}
+
+func NewScope(include []*ScopeEntry, exclude []*ScopeEntry, advanced bool) (*Scope, error) {
     res := &Scope{
         Exclude: exclude,
         Include: include,
         Advanced: advanced,
     }
 
-    for _, entry := range include {
-        entry.Setup(advanced)
+    err := res.setup()
+    if err != nil {
+        return nil, err
     }
-
-    for _, entry := range exclude {
-        entry.Setup(advanced)
-    }
-
-    return res
+    return res, nil
 }
 
 func (s *Scope) AddRule(entry *ScopeEntry, in bool) {
@@ -177,30 +207,24 @@ func (s *Scope) InScope(url string) bool {
         return false
     }
     protocol = splits[0]
-    url = splits[1]
-    splits = strings.SplitN(url, "/", 2)
+    splits = strings.SplitN(splits[1], "/", 2)
     host = splits[0]
     file = "/"
     if len(splits) > 1 {
         file += splits[1]
     }
-    
-    valid := false
 
-    var entry *ScopeEntry
-    for _, entry = range s.Include {
+    for _, entry := range s.Exclude {
         if entry.IsEnabled() && entry.IsValid(host, protocol, file) {
-            valid = true
-            break
+            return false
         }
     }
 
-    for i := 0; i < len(s.Exclude) && valid; i++ {
-        entry = s.Exclude[i]
+    for _, entry := range s.Include {
         if entry.IsEnabled() && entry.IsValid(host, protocol, file) {
-            valid = false
+            return true
         }
     }
 
-    return valid
+    return false
 }
