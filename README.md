@@ -15,9 +15,9 @@ server-side rendered since it does not feature a renderer.
 
 ### Go Module
 
-To install `GoCrawler` as a `GO` module:
+To install `GoCrawler` as a `GO` executable:
 ```shell
-$ go install -v github.com/m1dugh/gocrawler@latest
+$ go install -v github.com/m1dugh/gocrawler/cmd/gocrawler@latest
 ```
 
 ### Nix packages manager
@@ -197,7 +197,7 @@ import (
 func main() {
     includes := []string{`hackerone\.com`}
     excludes := []string{`api\.hackerone\.com`, `^http://`}
-    scope := gocrawler.NewScope(includes, excludes)
+    scope := gocrawler.NewSimpleScope(includes, excludes)
 
     config := &gocrawler.Config{
         MaxThreads: 10,     // Sets the number of threads to 10
@@ -208,8 +208,8 @@ func main() {
     urls := []string{`https://www.hackerone.com`}
 
     // Adds a callback when a url is requested.
-    //  crawler.AddCallback(func(res *http.Response, body string) {
-    //      fmt.Printf("url: %s, response length: %d\n", res.Request.URL, len(body))
+    //  crawler.AddCallback(func(result gocrawler.CrawlResponse) {
+    //      fmt.Printf("url: %s, response length: %d\n", result.URLJ, len(result.Body))
     //  })
 
     crawler.Crawl(urls)
