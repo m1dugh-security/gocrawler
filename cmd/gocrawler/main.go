@@ -141,8 +141,8 @@ func main() {
     }
     cr:= gocrawler.New(scope, config)
 
-    cr.AddCallback(func(res *http.Response, _ string) {
-        fmt.Println(res.Request.URL)
+    cr.AddCallback(func(response gocrawler.CrawlResponse) {
+        fmt.Println(response.URL)
     })
 
     cr.Crawl(urls)

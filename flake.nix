@@ -2,7 +2,6 @@
     description = "A page crawler written in go.";
 
     inputs = {
-        nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
         flake-compat = {
             url = "github:edolstra/flake-compat";
             flake = false;

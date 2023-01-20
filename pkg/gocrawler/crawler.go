@@ -1,12 +1,19 @@
 package gocrawler
 
 import (
-    "net/http"
-    "github.com/m1dugh/gocrawler/pkg/types"
-    "bytes"
-    "io"
-    "strings"
+	"bytes"
+	"io"
+	"net/http"
+	"strings"
+
+	"github.com/m1dugh/gocrawler/pkg/types"
 )
+
+type CrawlResponse struct {
+    URL         string
+    Response    http.Response
+    Body        string
+}
 
 type Config struct {
     MaxThreads  uint
@@ -22,7 +29,7 @@ func DefaultConfig() *Config {
     }
 }
 
-type Callback func(*http.Response, string)
+type Callback func(response CrawlResponse)
 
 type cb_holder struct {
     Callback
@@ -37,6 +44,7 @@ type Crawler struct {
     Config      *Config
     throttler   *types.RequestThrottler
     client      *http.Client
+    callbackChannel chan CrawlResponse
 }
 
 func New(scope *Scope, config *Config) *Crawler {
@@ -52,15 +60,25 @@ func New(scope *Scope, config *Config) *Crawler {
         Config: config,
         throttler: types.NewRequestThrottler(config.MaxRequests),
         client: &http.Client{},
+        callbackChannel: make(chan CrawlResponse),
     }
 
     return res
 }
 
-func (cr *Crawler) runCallbacks(resp *http.Response, body string) {
-    for _, holder := range cr.callbacks {
-        holder.Callback(resp, body)
-    }
+func (cr *Crawler) runCallbacks(payload CrawlResponse) {
+    cr.callbackChannel <- payload
+}
+
+func (cr *Crawler) activateCallbacks() {
+
+    go func() {
+        for payload := range cr.callbackChannel {
+            for _, holder := range cr.callbacks {
+                holder.Callback(payload)
+            }
+        }
+    }()
 }
 
 func (cr *Crawler) extractPageInfo(url string) []string {
@@ -96,7 +114,11 @@ func (cr *Crawler) extractPageInfo(url string) []string {
         }
     }
 
-    cr.runCallbacks(resp, content)
+    cr.runCallbacks(CrawlResponse{
+        URL: url,
+        Response: *resp,
+        Body: content,
+    })
 
     return res
 }
@@ -145,6 +167,8 @@ func (cr *Crawler) Crawl(endpoints []string) {
         cr.urls.Enqueue(v)
     }
 
+    cr.activateCallbacks()
+
     threads := types.NewThreadThrottler(cr.Config.MaxThreads)
 
     for cr.urls.Length() > 0 {
@@ -158,5 +182,7 @@ func (cr *Crawler) Crawl(endpoints []string) {
         }
         threads.Wait()
     }
+
+    close(cr.callbackChannel)
 }
 

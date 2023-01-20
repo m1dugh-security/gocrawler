@@ -38,41 +38,6 @@ func TestQueueSingleThread(t *testing.T) {
     }
 }
 
-func TestStringSetSingleThread(t *testing.T) {
-    set := NewStringSet(nil)
-    word := "hello"
-    if set.AddWord(word) != true {
-        t.Errorf("Expected to be able to add word")
-    }
-
-    for i := 0; i < 1000; i++ {
-        if set.AddWord(word) != false {
-            t.Errorf("Expected to find duplicate")
-        }
-    }
-}
-
-func TestStringSetMultiThead(t *testing.T) {
-    set := NewStringSet(nil)
-    var wg sync.WaitGroup
-    sample := 10000
-
-    for i := 0; i < 100; i++ {
-        wg.Add(1)
-        go func(set *StringSet) {
-            for i := 0; i < sample; i++ {
-                set.AddWord(fmt.Sprintf("%d", i))
-            }
-            wg.Done()
-        }(set)
-    }
-    wg.Wait()
-
-    if set.Length() != sample {
-        t.Errorf("Expected the length to be %d but got %d", sample, set.Length())
-    }
-}
-
 func TestQueueMultiThreaded(t *testing.T) {
 
     q := NewQueue[string]()
@@ -118,3 +83,39 @@ func TestQueueMultiThreaded(t *testing.T) {
         t.Errorf("Expected length to be %d", 0)
     }
 }
+
+func TestStringSetSingleThread(t *testing.T) {
+    set := NewStringSet(nil)
+    word := "hello"
+    if set.AddWord(word) != true {
+        t.Errorf("Expected to be able to add word")
+    }
+
+    for i := 0; i < 1000; i++ {
+        if set.AddWord(word) != false {
+            t.Errorf("Expected to find duplicate")
+        }
+    }
+}
+
+func TestStringSetMultiThead(t *testing.T) {
+    set := NewStringSet(nil)
+    var wg sync.WaitGroup
+    sample := 10000
+
+    for i := 0; i < 100; i++ {
+        wg.Add(1)
+        go func(set *StringSet) {
+            for i := 0; i < sample; i++ {
+                set.AddWord(fmt.Sprintf("%d", i))
+            }
+            wg.Done()
+        }(set)
+    }
+    wg.Wait()
+
+    if set.Length() != sample {
+        t.Errorf("Expected the length to be %d but got %d", sample, set.Length())
+    }
+}
+
