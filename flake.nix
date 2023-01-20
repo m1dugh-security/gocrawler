@@ -14,42 +14,51 @@
         ...
     }:
     let 
-        system = "x86_64-linux";
-        pkgs = import nixpkgs {
-            inherit system;
-            config.allowUnfree = true;
-        };
         inherit (nixpkgs) lib;
+        supportedSystems = [ "x86_64-linux" "aarch64-linux" "aarch64-darwin" "x86_64-darwin" ];
+        forAllSystems = lib.genAttrs supportedSystems;
+        nixpkgsFor = forAllSystems(system: import nixpkgs {
+            inherit system;
+            configure.AllowUnfree = true;
+        });
     in {
 
-        packages.${system} = {
-            go-crawler = pkgs.buildGoModule rec {
-                pname = "go-crawler";
-                version = "1.5.0";
-
+        packages = forAllSystems(system: 
+        let
+            pkgs = nixpkgsFor.${system};
+        in {
+            gocrawler = {
+                pname = "gocrawler";
+                version = "1.5.1";
                 src = lib.cleanSource ./.;
-
                 vendorSha256 = "sha256-cPOZ+95ajSi5AJL9aTegtI/7dre0nRB52v2pY6HD0P0=";
             };
 
-            default = self.packages.${system}.go-crawler;
-        };
+            default = self.packages.${system}.gocrawler;
+        });
 
-        apps.${system} =
+        apps = forAllSystems(system: 
         let
             packages = self.packages.${system};
         in {
-            default = {
+            gocrawler = {
                 type = "app";
                 program = "${packages.default}/bin/gocrawler";
             };
-        };
 
-        devShells.${system}.default = pkgs.mkShell {
-            nativeBuildInputs = with pkgs; [
-                gnumake
-                go
-            ];
-        };
+            default = self.apps.${system}.gocrawler;
+        });
+
+        devShells = forAllSystems(system: 
+        let
+            pkgs = nixpkgsFor.${system};
+        in {
+            default = pkgs.mkShell {
+                nativeBuildInputs = with pkgs; [
+                    gnumake
+                    go
+                ];
+            };
+        });
     };
 }

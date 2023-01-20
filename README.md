@@ -53,20 +53,67 @@ Usage of gocrawler:
         The file containing all urls
 ```
 
-> `GoCrawler` has to be used with a json scope file provided by the `-scope` file
+### Additionnal headers
+A set of additionnal headers can be provided to the crawler with
+`-H "Header: value"` parameter.
+
+```shell
+$ gocrawler -urls urls.txt \
+    -H "X-HackerOne: h4ck3r" \
+    -H "X-Request-Id: 1234" \
+    -scope scope.json
+```
+
+### Scopes
+`GoCrawler` has to be used with a json scope file provided by the `-scope`
+file. This file can be either of the format of a `burpsuite scope`, or
+follow the [example scope files](https://github.com/m1dugh-security/gocrawler/tree/master/examples/)
 
 ```json
 {
-    "include": [
-        "\\.hackerone\\.com",
-        "api\\.hackerone\\.com"
-    ],
 
-    "exclude": [
-        "^http://"
-    ]
+    "scope": {
+        "advanced": false,
+        "include": [
+            {
+                "enabled": true,
+                "url": "\\.hackerone\\.com"
+            },
+            {
+                "enabled": true,
+                "url": "api\\.hackerone\\.com"
+            }
+        ],
+        "exclude": [
+            {
+                "enabled": true,
+                "url": "^http://"
+            }
+        ]
+    }
 }
 ```
+
+The `Advanced` mode will split the `URL` as `${protocol}://${host}${file}`,
+and the scope will be checking against the provided regexes. If none provided,
+the scope will validate the member.
+
+*Examle*: 
+```json
+{
+    "scope": {
+        "advanced": true,
+        "include": [
+            {
+                "enabled": true,
+                "host": "^(\\w+\\.)*\\.hacker\\.com$"
+            }
+        ],
+    }
+}
+```
+Will validate any url whose domain matches the `host regex` whatever the 
+`protocol` and the `file` is.
 
 > This scope provides two arrays containing regexes.
 
