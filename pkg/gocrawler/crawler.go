@@ -5,8 +5,8 @@ import (
 	"io"
 	"net/http"
 	"strings"
-
-	"github.com/m1dugh/gocrawler/pkg/types"
+    "github.com/m1dugh/program-browser/pkg/types"
+	utils "github.com/m1dugh/gocrawler/pkg/types"
 )
 
 type CrawlResponse struct {
@@ -37,28 +37,28 @@ type cb_holder struct {
 }
 
 type Crawler struct {
-    Scope       *Scope
-    urls        *types.Queue[string]
-    Discovered  *types.StringSet
+    Scope       *types.Scope
+    urls        *utils.Queue[string]
+    Discovered  *utils.StringSet
     callbacks   []cb_holder
     Config      *Config
-    throttler   *types.RequestThrottler
+    throttler   *utils.RequestThrottler
     client      *http.Client
     callbackChannel chan CrawlResponse
 }
 
-func New(scope *Scope, config *Config) *Crawler {
+func New(scope *types.Scope, config *Config) *Crawler {
     if config == nil {
         config = DefaultConfig()
     }
 
     res := &Crawler{
         Scope: scope,
-        urls: types.NewQueue[string](),
-        Discovered: types.NewStringSet(nil),
+        urls: utils.NewQueue[string](),
+        Discovered: utils.NewStringSet(nil),
         callbacks: nil,
         Config: config,
-        throttler: types.NewRequestThrottler(config.MaxRequests),
+        throttler: utils.NewRequestThrottler(config.MaxRequests),
         client: &http.Client{},
         callbackChannel: make(chan CrawlResponse),
     }
@@ -148,7 +148,7 @@ func (cr *Crawler) RemoveCallback(handler int) {
     }
 }
 
-func (cr *Crawler) crawlPage(threads *types.ThreadThrottler, url string) {
+func (cr *Crawler) crawlPage(threads *utils.ThreadThrottler, url string) {
     defer threads.Done()
     added := cr.Discovered.AddWord(url)
     if added {
@@ -169,7 +169,7 @@ func (cr *Crawler) Crawl(endpoints []string) {
 
     cr.activateCallbacks()
 
-    threads := types.NewThreadThrottler(cr.Config.MaxThreads)
+    threads := utils.NewThreadThrottler(cr.Config.MaxThreads)
 
     for cr.urls.Length() > 0 {
         for cr.urls.Length() > 0 || threads.Threads() > 0 {

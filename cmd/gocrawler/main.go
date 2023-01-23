@@ -9,6 +9,7 @@ import (
     "bufio"
     "io"
     "github.com/m1dugh/gocrawler/pkg/gocrawler"
+    utils "github.com/m1dugh/program-browser/pkg/types"
     "errors"
 )
 
@@ -129,7 +130,7 @@ func main() {
     if err != nil {
         log.Fatal(err)
     }
-    scope, err := gocrawler.DeserializeScope(body)
+    scope, err := utils.DeserializeScope(body)
     if err != nil {
         log.Fatal(err)
     }
