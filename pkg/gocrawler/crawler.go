@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
     "github.com/m1dugh/program-browser/pkg/types"
-	utils "github.com/m1dugh/gocrawler/pkg/types"
+    "github.com/m1dugh-security/tools/go/utils/pkg/utils"
 )
 
 type CrawlResponse struct {
